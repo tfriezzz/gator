@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/tfriezzz/gator/internal/database"
 )
 
 const configFileName = ".gatorconfig.json"
 
 type State struct {
-	Config Config
+	DB     *database.Queries
+	Config *Config
 }
 
 type Config struct {
@@ -54,7 +57,7 @@ func (c Config) SetUser(userName string) error {
 	return nil
 }
 
-func Read() Config {
+func Read() *Config {
 	filePath, err := getConfigFilePath()
 	if err != nil {
 		log.Fatal(err)
@@ -64,7 +67,7 @@ func Read() Config {
 		log.Fatal(err)
 	}
 
-	var config Config
+	var config *Config
 	if err = json.Unmarshal(content, &config); err != nil {
 		log.Fatal(err)
 	}
