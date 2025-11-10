@@ -16,3 +16,8 @@ WHERE name = $1;
 
 -- name: DeleteUser :exec
 DELETE FROM users;
+
+
+-- name: ListUser :many
+SELECT * FROM users
+ORDER BY name;

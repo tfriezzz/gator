@@ -93,3 +93,19 @@ func HandlerReset(s *config.State, cmd commands.Command) error {
 	fmt.Print("user list has been reset")
 	return nil
 }
+
+func HandlerList(s *config.State, cmd commands.Command) error {
+	currentUser := s.Config.CurrentUserName
+	list, err := s.DB.ListUser(context.Background())
+	if err != nil {
+		return err
+	}
+	for _, u := range list {
+		isCurrentUser := ""
+		if u.Name == currentUser {
+			isCurrentUser = "(current)"
+		}
+		fmt.Printf("* %v %v\n", u.Name, isCurrentUser)
+	}
+	return nil
+}
