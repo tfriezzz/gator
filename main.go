@@ -39,6 +39,8 @@ func main() {
 
 	testCommands.Register("register", handleruser.HandlerRegister)
 
+	testCommands.Register("reset", handleruser.HandlerReset)
+
 	err = testCommands.Run(&testState, testCmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

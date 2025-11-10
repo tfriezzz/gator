@@ -84,3 +84,12 @@ func HandlerRegister(s *config.State, cmd commands.Command) error {
 	fmt.Printf("user %s was created: %+v", user.Name, user)
 	return nil
 }
+
+func HandlerReset(s *config.State, cmd commands.Command) error {
+	err := s.DB.DeleteUser(context.Background())
+	if err != nil {
+		return err
+	}
+	fmt.Print("user list has been reset")
+	return nil
+}
