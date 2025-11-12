@@ -14,6 +14,7 @@ import (
 	"github.com/tfriezzz/gator/commands"
 	"github.com/tfriezzz/gator/internal/config"
 	"github.com/tfriezzz/gator/internal/database"
+	"github.com/tfriezzz/gator/rss"
 )
 
 func requireOneArg(cmd commands.Command, usage string) {
@@ -107,5 +108,12 @@ func HandlerList(s *config.State, cmd commands.Command) error {
 		}
 		fmt.Printf("* %v %v\n", u.Name, isCurrentUser)
 	}
+	return nil
+}
+
+func HandlerAgg(s *config.State, cmd commands.Command) error {
+	testFeed, _ := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	fmt.Printf("testFeed: %v", testFeed)
+
 	return nil
 }

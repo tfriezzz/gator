@@ -18,10 +18,19 @@ func main() {
 	testState.Config = testConfig
 	var testCommands commands.Commands
 	testCommands.Handlers = make(map[string]func(*config.State, commands.Command) error)
-	testCmd := commands.Command{
-		Name: os.Args[1],
-		Args: os.Args[2:],
+	arg1 := ""
+	arg2 := []string{}
+	if len(os.Args) > 1 {
+		arg1 = os.Args[1]
 	}
+	if len(os.Args) > 2 {
+		arg2 = os.Args[2:]
+	}
+	testCmd := commands.Command{
+		Name: arg1,
+		Args: arg2,
+	}
+	// testCtx := context.Background()
 
 	db, err := sql.Open("postgres", testConfig.DBURL)
 	if err != nil {
@@ -32,19 +41,19 @@ func main() {
 	testState.DB = dbQueries
 	testCommands.Register("login", handleruser.HandlerLogin)
 
-	// err := testCommands.Run(&testState, testCmd)
-	// if err != nil {
-	// 	fmt.Fprintln(os.Stderr, err)
-	// }
-
 	testCommands.Register("register", handleruser.HandlerRegister)
 
 	testCommands.Register("reset", handleruser.HandlerReset)
 
 	testCommands.Register("users", handleruser.HandlerList)
 
+	testCommands.Register("agg", handleruser.HandlerAgg)
+
 	err = testCommands.Run(&testState, testCmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+
+	// testFeed, _ := rss.FetchFeed(testCtx, "https://www.wagslane.dev/index.xml")
+	// fmt.Printf("testFeed: %v", testFeed)
 }
