@@ -143,3 +143,18 @@ func HandlerFeed(s *config.State, cmd commands.Command) error {
 
 	return nil
 }
+
+func HandlerFeeds(s *config.State, cmd commands.Command) error {
+	feeds, err := s.DB.ListFeed(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, feed := range feeds {
+		user, _ := s.DB.GetUserByID(context.Background(), feed.UserID)
+
+		fmt.Printf("%v, %v\n", feed, user.Name)
+	}
+
+	return nil
+}
