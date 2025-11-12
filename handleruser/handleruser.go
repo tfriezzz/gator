@@ -61,7 +61,7 @@ func HandlerRegister(s *config.State, cmd commands.Command) error {
 	updatedAt := time.Now()
 	userName := cmd.Args[0]
 
-	userArgs := database.CreateUserParams{
+	userParams := database.CreateUserParams{
 		userID, createdAt,
 		updatedAt, userName,
 	}
@@ -72,7 +72,7 @@ func HandlerRegister(s *config.State, cmd commands.Command) error {
 		os.Exit(1)
 	}
 
-	user, err := s.DB.CreateUser(context.Background(), userArgs)
+	user, err := s.DB.CreateUser(context.Background(), userParams)
 	if err != nil {
 		return err
 	}
@@ -114,6 +114,32 @@ func HandlerList(s *config.State, cmd commands.Command) error {
 func HandlerAgg(s *config.State, cmd commands.Command) error {
 	testFeed, _ := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
 	fmt.Printf("testFeed: %v", testFeed)
+
+	return nil
+}
+
+func HandlerFeed(s *config.State, cmd commands.Command) error {
+	userName := s.Config.CurrentUserName
+	currentUser, err := s.DB.GetUser(context.Background(), userName)
+	if err != nil {
+		return err
+	}
+
+	userID := uuid.New()
+	createdAt := time.Now()
+	updatedAt := time.Now()
+	name := cmd.Args[0]
+	url := cmd.Args[1]
+
+	feedParams := database.CreateFeedParams{
+		userID, createdAt, updatedAt, name, url, currentUser.ID,
+	}
+
+	feed, err := s.DB.CreateFeed(context.Background(), feedParams)
+	if err != nil {
+		return err
+	}
+	fmt.Println(feed)
 
 	return nil
 }

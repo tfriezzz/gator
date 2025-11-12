@@ -49,6 +49,8 @@ func main() {
 
 	testCommands.Register("agg", handleruser.HandlerAgg)
 
+	testCommands.Register("addfeed", handleruser.HandlerFeed)
+
 	err = testCommands.Run(&testState, testCmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
