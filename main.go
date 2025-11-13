@@ -39,6 +39,7 @@ func main() {
 	dbQueries := database.New(db)
 
 	testState.DB = dbQueries
+
 	testCommands.Register("login", handleruser.HandlerLogin)
 
 	testCommands.Register("register", handleruser.HandlerRegister)
@@ -52,6 +53,10 @@ func main() {
 	testCommands.Register("addfeed", handleruser.HandlerFeed)
 
 	testCommands.Register("feeds", handleruser.HandlerFeeds)
+
+	testCommands.Register("follow", handleruser.HandlerFollow)
+
+	testCommands.Register("following", handleruser.HandlerFollowing)
 
 	err = testCommands.Run(&testState, testCmd)
 	if err != nil {

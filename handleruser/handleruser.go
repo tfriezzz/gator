@@ -30,6 +30,15 @@ func requireOneArg(cmd commands.Command, usage string) {
 	// }
 }
 
+func getCurrentUser(s *config.State) database.User {
+	userName := s.Config.CurrentUserName
+	currentUser, err := s.DB.GetUser(context.Background(), userName)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return currentUser
+}
+
 func HandlerLogin(s *config.State, cmd commands.Command) error {
 	requireOneArg(cmd, "gator login <username>")
 	// if len(cmd.Args) != 1 {
@@ -125,14 +134,14 @@ func HandlerFeed(s *config.State, cmd commands.Command) error {
 		return err
 	}
 
-	userID := uuid.New()
+	ID := uuid.New()
 	createdAt := time.Now()
 	updatedAt := time.Now()
 	name := cmd.Args[0]
 	url := cmd.Args[1]
 
 	feedParams := database.CreateFeedParams{
-		userID, createdAt, updatedAt, name, url, currentUser.ID,
+		ID, createdAt, updatedAt, name, url, currentUser.ID,
 	}
 
 	feed, err := s.DB.CreateFeed(context.Background(), feedParams)
@@ -140,6 +149,16 @@ func HandlerFeed(s *config.State, cmd commands.Command) error {
 		return err
 	}
 	fmt.Println(feed)
+
+	feedFollowParams := database.CreateFeedFollowParams{
+		feed.ID, feed.CreatedAt, feed.UpdatedAt, currentUser.ID, feed.ID,
+	}
+
+	feedFollow, err := s.DB.CreateFeedFollow(context.Background(), feedFollowParams)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("feed '%v' followed", feedFollow.FeedName)
 
 	return nil
 }
@@ -154,6 +173,45 @@ func HandlerFeeds(s *config.State, cmd commands.Command) error {
 		user, _ := s.DB.GetUserByID(context.Background(), feed.UserID)
 
 		fmt.Printf("%v, %v\n", feed, user.Name)
+	}
+
+	return nil
+}
+
+func HandlerFollow(s *config.State, cmd commands.Command) error {
+	url := cmd.Args[0]
+	feed, err := s.DB.GetFeedByURL(context.Background(), url)
+	if err != nil {
+		return err
+	}
+
+	ID := uuid.New()
+	createdAt := time.Now()
+	updatedAt := time.Now()
+	userID := getCurrentUser(s).ID
+	feedID := feed.ID
+
+	feedFollowParams := database.CreateFeedFollowParams{
+		ID, createdAt, updatedAt, userID, feedID,
+	}
+
+	feedFollow, err := s.DB.CreateFeedFollow(context.Background(), feedFollowParams)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("feed: %v, user: %v", feedFollow.FeedName, feedFollow.UserName)
+	return nil
+}
+
+func HandlerFollowing(s *config.State, cmd commands.Command) error {
+	currentUser := getCurrentUser(s)
+	feeds, err := s.DB.GetFeedFollowsForUser(context.Background(), currentUser.ID)
+	if err != nil {
+		return err
+	}
+	for _, feed := range feeds {
+		fmt.Println(feed.FeedName)
 	}
 
 	return nil
