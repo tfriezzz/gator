@@ -50,19 +50,16 @@ func main() {
 
 	testCommands.Register("agg", handleruser.HandlerAgg)
 
-	testCommands.Register("addfeed", handleruser.HandlerFeed)
+	testCommands.Register("addfeed", handleruser.MiddlewareLoggedIn(handleruser.HandlerAddFeed))
 
 	testCommands.Register("feeds", handleruser.HandlerFeeds)
 
-	testCommands.Register("follow", handleruser.HandlerFollow)
+	testCommands.Register("follow", handleruser.MiddlewareLoggedIn(handleruser.HandlerFollow))
 
-	testCommands.Register("following", handleruser.HandlerFollowing)
+	testCommands.Register("following", handleruser.MiddlewareLoggedIn(handleruser.HandlerFollowing))
 
 	err = testCommands.Run(&testState, testCmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
-
-	// testFeed, _ := rss.FetchFeed(testCtx, "https://www.wagslane.dev/index.xml")
-	// fmt.Printf("testFeed: %v", testFeed)
 }

@@ -22,28 +22,35 @@ func requireOneArg(cmd commands.Command, usage string) {
 		fmt.Fprintln(os.Stderr, "usage:", usage)
 		os.Exit(1)
 	}
-	// cmd.Name = os.Args[1]
-	// cmd.Args = os.Args[2:]
-	// if len(cmd.Name) == 0 {
-	// 	fmt.Fprintln(os.Stderr, "username required")
-	// 	os.Exit(1)
-	// }
 }
 
-func getCurrentUser(s *config.State) database.User {
-	userName := s.Config.CurrentUserName
-	currentUser, err := s.DB.GetUser(context.Background(), userName)
-	if err != nil {
-		fmt.Println(err)
+// func getCurrentUser(s *config.State) database.User {
+// 	userName := s.Config.CurrentUserName
+// 	currentUser, err := s.DB.GetUser(context.Background(), userName)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
+// 	return currentUser
+// }
+
+func MiddlewareLoggedIn(handler func(s *config.State, cmd commands.Command, user database.User) error) func(*config.State, commands.Command) error {
+	newHandler := func(s *config.State, cmd commands.Command) error {
+		currentUser, err := s.DB.GetUser(context.Background(), s.Config.CurrentUserName)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		handler(s, cmd, currentUser)
+
+		return nil
 	}
-	return currentUser
+
+	return newHandler
 }
 
 func HandlerLogin(s *config.State, cmd commands.Command) error {
 	requireOneArg(cmd, "gator login <username>")
-	// if len(cmd.Args) != 1 {
-	// 	return fmt.Errorf("the login handler expects a single argument")
-	// }
+
 	userName := cmd.Args[0]
 	_, err := s.DB.GetUser(context.Background(), userName)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -127,12 +134,12 @@ func HandlerAgg(s *config.State, cmd commands.Command) error {
 	return nil
 }
 
-func HandlerFeed(s *config.State, cmd commands.Command) error {
-	userName := s.Config.CurrentUserName
-	currentUser, err := s.DB.GetUser(context.Background(), userName)
-	if err != nil {
-		return err
-	}
+func HandlerAddFeed(s *config.State, cmd commands.Command, u database.User) error {
+	// userName := s.Config.CurrentUserName
+	// currentUser, err := s.DB.GetUser(context.Background(), userName)
+	// if err != nil {
+	// 	return err
+	// }
 
 	ID := uuid.New()
 	createdAt := time.Now()
@@ -141,7 +148,7 @@ func HandlerFeed(s *config.State, cmd commands.Command) error {
 	url := cmd.Args[1]
 
 	feedParams := database.CreateFeedParams{
-		ID, createdAt, updatedAt, name, url, currentUser.ID,
+		ID, createdAt, updatedAt, name, url, u.ID,
 	}
 
 	feed, err := s.DB.CreateFeed(context.Background(), feedParams)
@@ -151,7 +158,7 @@ func HandlerFeed(s *config.State, cmd commands.Command) error {
 	fmt.Println(feed)
 
 	feedFollowParams := database.CreateFeedFollowParams{
-		feed.ID, feed.CreatedAt, feed.UpdatedAt, currentUser.ID, feed.ID,
+		feed.ID, feed.CreatedAt, feed.UpdatedAt, u.ID, feed.ID,
 	}
 
 	feedFollow, err := s.DB.CreateFeedFollow(context.Background(), feedFollowParams)
@@ -178,7 +185,7 @@ func HandlerFeeds(s *config.State, cmd commands.Command) error {
 	return nil
 }
 
-func HandlerFollow(s *config.State, cmd commands.Command) error {
+func HandlerFollow(s *config.State, cmd commands.Command, u database.User) error {
 	url := cmd.Args[0]
 	feed, err := s.DB.GetFeedByURL(context.Background(), url)
 	if err != nil {
@@ -188,7 +195,7 @@ func HandlerFollow(s *config.State, cmd commands.Command) error {
 	ID := uuid.New()
 	createdAt := time.Now()
 	updatedAt := time.Now()
-	userID := getCurrentUser(s).ID
+	userID := u.ID
 	feedID := feed.ID
 
 	feedFollowParams := database.CreateFeedFollowParams{
@@ -204,9 +211,8 @@ func HandlerFollow(s *config.State, cmd commands.Command) error {
 	return nil
 }
 
-func HandlerFollowing(s *config.State, cmd commands.Command) error {
-	currentUser := getCurrentUser(s)
-	feeds, err := s.DB.GetFeedFollowsForUser(context.Background(), currentUser.ID)
+func HandlerFollowing(s *config.State, cmd commands.Command, u database.User) error {
+	feeds, err := s.DB.GetFeedFollowsForUser(context.Background(), u.ID)
 	if err != nil {
 		return err
 	}
