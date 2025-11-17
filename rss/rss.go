@@ -58,5 +58,5 @@ func FetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 		return nil, err
 	}
 	unescaper(&RSSResponse)
-	return &RSSResponse, nil // should return actual feed, not empty struct
+	return &RSSResponse, nil
 }

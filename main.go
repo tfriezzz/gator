@@ -58,6 +58,8 @@ func main() {
 
 	testCommands.Register("following", handleruser.MiddlewareLoggedIn(handleruser.HandlerFollowing))
 
+	testCommands.Register("unfollow", handleruser.MiddlewareLoggedIn(handleruser.HandlerUnfollow))
+
 	err = testCommands.Run(&testState, testCmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

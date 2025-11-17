@@ -48,6 +48,24 @@ func MiddlewareLoggedIn(handler func(s *config.State, cmd commands.Command, user
 	return newHandler
 }
 
+func scrapeFeeds(s *config.State, cmd commands.Command) error {
+	feed, err := s.DB.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return err
+	}
+	feedFetchedParams := database.MarkFeedFetchedParams{
+		feed.ID, feed.LastFetchedAt, feed.UpdatedAt,
+	}
+	s.DB.MarkFeedFetched(context.Background(), feedFetchedParams)
+
+	fetchedFeed, err := rss.FetchFeed(context.Background(), feed.Url)
+
+	for _, RSSItem := range fetchedFeed.Channel.Item {
+		fmt.Println(RSSItem.Title)
+	}
+	return nil
+}
+
 func HandlerLogin(s *config.State, cmd commands.Command) error {
 	requireOneArg(cmd, "gator login <username>")
 
@@ -128,8 +146,23 @@ func HandlerList(s *config.State, cmd commands.Command) error {
 }
 
 func HandlerAgg(s *config.State, cmd commands.Command) error {
-	testFeed, _ := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
-	fmt.Printf("testFeed: %v", testFeed)
+	requireOneArg(cmd, "gator agg <time_between_reqs>")
+	timeBetweenRequests, err := time.ParseDuration(os.Args[2])
+	if err != nil {
+		return err
+	}
+	fmt.Printf("collecting feeds every %v\n", os.Args[2])
+
+	ticker := time.NewTicker(timeBetweenRequests)
+	for ; ; <-ticker.C {
+		err := scrapeFeeds(s, cmd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// testFeed, _ := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	// fmt.Printf("testFeed: %v", testFeed)
 
 	return nil
 }
@@ -219,6 +252,21 @@ func HandlerFollowing(s *config.State, cmd commands.Command, u database.User) er
 	for _, feed := range feeds {
 		fmt.Println(feed.FeedName)
 	}
+
+	return nil
+}
+
+func HandlerUnfollow(s *config.State, cmd commands.Command, u database.User) error {
+	url := cmd.Args[0]
+	feed, err := s.DB.GetFeedByURL(context.Background(), url)
+	if err != nil {
+		return err
+	}
+
+	unfollowParams := database.DeleteFeedFollowParams{
+		u.ID, feed.ID,
+	}
+	s.DB.DeleteFeedFollow(context.Background(), unfollowParams)
 
 	return nil
 }
