@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	// "github.com/tfriezzz/gator/internal/commands"
@@ -49,19 +50,38 @@ func MiddlewareLoggedIn(handler func(s *config.State, cmd commands.Command, user
 }
 
 func scrapeFeeds(s *config.State, cmd commands.Command) error {
-	feed, err := s.DB.GetNextFeedToFetch(context.Background())
+	ctx := context.Background()
+	feed, err := s.DB.GetNextFeedToFetch(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
 		return err
 	}
 	feedFetchedParams := database.MarkFeedFetchedParams{
 		feed.ID, feed.LastFetchedAt, feed.UpdatedAt,
 	}
-	s.DB.MarkFeedFetched(context.Background(), feedFetchedParams)
-
+	if err := s.DB.MarkFeedFetched(context.Background(), feedFetchedParams); err != nil {
+		return err
+	}
 	fetchedFeed, err := rss.FetchFeed(context.Background(), feed.Url)
+	if err != nil {
+		return err
+	}
 
 	for _, RSSItem := range fetchedFeed.Channel.Item {
-		fmt.Println(RSSItem.Title)
+		// fmt.Printf("pubDate: %v\n", RSSItem.PubDate)
+		pubDate, err := time.Parse(time.RFC1123Z, RSSItem.PubDate)
+		if err != nil {
+			return err
+		}
+		postParams := database.CreatePostParams{
+			uuid.New(), time.Now(), time.Now(), RSSItem.Title, RSSItem.Link, RSSItem.Description, pubDate, feed.ID,
+		}
+		if err := s.DB.CreatePost(context.Background(), postParams); err != nil {
+			return err
+		}
+		// fmt.Println(RSSItem.Title)
 	}
 	return nil
 }
@@ -161,19 +181,10 @@ func HandlerAgg(s *config.State, cmd commands.Command) error {
 		}
 	}
 
-	// testFeed, _ := rss.FetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
-	// fmt.Printf("testFeed: %v", testFeed)
-
 	return nil
 }
 
 func HandlerAddFeed(s *config.State, cmd commands.Command, u database.User) error {
-	// userName := s.Config.CurrentUserName
-	// currentUser, err := s.DB.GetUser(context.Background(), userName)
-	// if err != nil {
-	// 	return err
-	// }
-
 	ID := uuid.New()
 	createdAt := time.Now()
 	updatedAt := time.Now()
@@ -267,6 +278,31 @@ func HandlerUnfollow(s *config.State, cmd commands.Command, u database.User) err
 		u.ID, feed.ID,
 	}
 	s.DB.DeleteFeedFollow(context.Background(), unfollowParams)
+
+	return nil
+}
+
+func HandlerBrowse(s *config.State, cmd commands.Command) error {
+	var limit int32
+	if len(os.Args) > 2 {
+		intLimit, err := strconv.Atoi(os.Args[2])
+		limit = int32(intLimit)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		limit = 2
+	}
+	posts, err := s.DB.GetPostsForUser(context.Background(), limit)
+	if err != nil {
+		return err
+	}
+	// fmt.Printf("posts: %v\n", posts)
+
+	for _, post := range posts {
+		fmt.Printf("%v:\n%v\npublished: %v\n\n", post.Url, post.Title, post.PublishedAt)
+	}
 
 	return nil
 }
